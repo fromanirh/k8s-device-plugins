@@ -45,16 +45,13 @@ func (NUMACellLister) NewPlugin(deviceID string) dpm.PluginInterface {
 	}
 }
 
-// ListAndWatch sends gRPC stream of devices.
-func (dpi *NUMACellDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	cpuRes, err := cpus.NewCPUs("/sys") // TODO get from cmdline flags
+func GetNUMACellDevices(sysfs string) ([]*pluginapi.Device, error) {
+	cpuRes, err := cpus.NewCPUs(sysfs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Send initial list of devices
-	devs := make([]*pluginapi.Device, 0)
-	resp := new(pluginapi.ListAndWatchResponse)
+	var devs []*pluginapi.Device
 	for _, numacell := range cpuRes.NUMANodes {
 		// Initialize with one available device
 		devs = append(devs, &pluginapi.Device{
@@ -69,6 +66,19 @@ func (dpi *NUMACellDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.De
 			},
 		})
 	}
+
+	return devs, nil
+}
+
+// ListAndWatch sends gRPC stream of devices.
+func (dpi *NUMACellDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
+	devs, err := GetNUMACellDevices("/sys") // TODO get from cmdline flags
+	if err != nil {
+		return err
+	}
+
+	// Send initial list of devices
+	resp := new(pluginapi.ListAndWatchResponse)
 	resp.Devices = devs
 	glog.Infof("send devices %v\n", resp)
 
