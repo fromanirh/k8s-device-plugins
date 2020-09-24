@@ -1,34 +1,45 @@
 RUNTIME ?= podman
 REPOOWNER ?= fromani
-IMAGENAME ?= k8s-device-plugins
+IMAGENAME_NUMACELL ?= k8s-dp-numacell
 IMAGETAG ?= latest
 
 BUILDFLAGS=GO111MODULE=on GOPROXY=off GOFLAGS=-mod=vendor GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 
-all: dist
+all: plugins
 
 outdir:
 	mkdir -p _output || :
 
-.PHONY: dist
-dist: plugins
-
-.PHONY: plugins
-plugins: numacell
-
-numacell: outdir
-	$(BUILDFLAGS) go build -v -o _output/numacell ./cmd/numacell
-
 clean:
 	rm -rf _output
 
-.PHONY: image
-image: plugins
-	@echo "building image"
-	$(RUNTIME) build -f Dockerfile -t quay.io/$(REPOOWNER)/$(IMAGENAME):$(IMAGETAG) .
+.PHONY: push
+push: push-numacell
+
+
+# alias
+.PHONY: dist
+dist: plugins
+
+.PHONY: images
+images: image-numacell
 
 .PHONY: push
-push: image
-	@echo "pushing image"
-	$(RUNTIME) push quay.io/$(REPOOWNER)/$(IMAGENAME):$(IMAGETAG)
+push: push-numacell
+
+.PHONY: plugins
+plugins: build-numacell
+
+build-numacell: outdir
+	$(BUILDFLAGS) go build -v -o _output/numacell ./cmd/numacell
+
+.PHONY: image-numacell
+image-numacell: build-numacell
+	@echo "building numacell image"
+	$(RUNTIME) build -f images/Dockerfile.numacell -t quay.io/$(REPOOWNER)/$(IMAGENAME_NUMACELL):$(IMAGETAG) .
+
+.PHONY: push-numacell
+push-numacell: image-numacell
+	@echo "pushing numacell image"
+	$(RUNTIME) push quay.io/$(REPOOWNER)/$(IMAGENAME_NUMACELL):$(IMAGETAG)
 

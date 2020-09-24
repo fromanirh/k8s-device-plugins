@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ocp-kni-dp-numacell
+spec:
+  selector:
+      matchLabels:
+        name: ocp-kni-dp-numacell
+  template:
+    metadata:
+      labels:
+        name: ocp-kni-dp-numacell
+    spec:
+      containers:
+      - name: numacell
+        image: quay.io/fromani/k8s-dp-numacell:latest
+        volumeMounts:
+        - name: kubeletsockets
+          mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+      - name: kubeletsockets
+        hostPath:
+          path: /var/lib/kubelet/device-plugins
