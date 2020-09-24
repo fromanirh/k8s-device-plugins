@@ -63,41 +63,23 @@ func (ncl NUMACellLister) NewPlugin(deviceID string) dpm.PluginInterface {
 	}
 }
 
-func GetNUMACellDevices(cpuInfos cpus.CPUs) ([]*pluginapi.Device, error) {
-	var devs []*pluginapi.Device
-	for _, numacell := range cpuInfos.NUMANodes {
-		// Initialize with one available device
-		devs = append(devs, &pluginapi.Device{
-			ID:     fmt.Sprintf("%s%02d", NUMACellName, numacell),
-			Health: pluginapi.Healthy,
-			Topology: &pluginapi.TopologyInfo{
-				Nodes: []*pluginapi.NUMANode{
-					&pluginapi.NUMANode{
-						ID: int64(numacell),
-					},
-				},
-			},
-		})
-	}
-
-	return devs, nil
-}
-
-// ListAndWatch sends gRPC stream of devices.
-func (dpi *NUMACellDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	devs := []*pluginapi.Device{
-		&pluginapi.Device{
-			ID:     dpi.deviceID,
-			Health: pluginapi.Healthy,
-			Topology: &pluginapi.TopologyInfo{
-				Nodes: []*pluginapi.NUMANode{
-					&pluginapi.NUMANode{
-						ID: int64(dpi.numacellID),
-					},
+func (dpi *NUMACellDevicePlugin) device() *pluginapi.Device {
+	return &pluginapi.Device{
+		ID:     dpi.deviceID,
+		Health: pluginapi.Healthy,
+		Topology: &pluginapi.TopologyInfo{
+			Nodes: []*pluginapi.NUMANode{
+				&pluginapi.NUMANode{
+					ID: int64(dpi.numacellID),
 				},
 			},
 		},
 	}
+}
+
+// ListAndWatch sends gRPC stream of devices.
+func (dpi *NUMACellDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
+	devs := []*pluginapi.Device{dpi.device()}
 
 	// Send initial list of devices
 	resp := new(pluginapi.ListAndWatchResponse)

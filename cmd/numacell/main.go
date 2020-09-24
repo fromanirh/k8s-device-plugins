@@ -12,6 +12,14 @@ import (
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 )
 
+func summarize(cpuInfos *cpus.CPUs) string {
+	var buf strings.Builder
+	w := tabwriter.NewWriter(&buf, 0, 0, 1, ' ', 0)
+	cpus.MakeSummary(cpuInfos, w)
+	w.Flush()
+	return buf.String()
+}
+
 func main() {
 	var sysfsPath string
 	flag.StringVar(&sysfsPath, "sysfs", "/sys", "mount path of sysfs")
@@ -22,11 +30,7 @@ func main() {
 		log.Fatalf("error getting topology info from %q: %v", sysfsPath, err)
 	}
 
-	var buf strings.Builder
-	w := tabwriter.NewWriter(&buf, 0, 0, 1, ' ', 0)
-	cpus.MakeSummary(cpuInfos, w)
-	w.Flush()
-	glog.Infof("detected:\n%s", buf.String())
+	glog.Infof("detected:\n%s", summarize(cpuInfos))
 
 	manager := dpm.NewManager(numacell.NewNUMACellLister(cpuInfos))
 	manager.Run()
