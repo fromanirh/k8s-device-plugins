@@ -3,8 +3,7 @@ module github.com/fromanirh/k8s-device-plugins
 go 1.15
 
 require (
-	github.com/davecgh/go-spew v1.1.1
-	github.com/fromanirh/numalign v0.0.4
+	github.com/fromanirh/numalign v0.0.7
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/kubevirt/device-plugin-manager v1.18.8
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73
