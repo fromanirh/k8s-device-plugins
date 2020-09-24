@@ -2,7 +2,6 @@ package numacell
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/fromanirh/numalign/pkg/topologyinfo/cpus"
@@ -15,44 +14,58 @@ import (
 const (
 	NUMACellPath      = "/dev/null"
 	NUMACellName      = "numacell"
-	resourceNamespace = "devices.openshift-kni.io" // TODO pick a better one?
+	resourceNamespace = "openshift-kni.io" // TODO pick a better one?
 )
 
 // NUMACellLister is the object responsible for discovering initial pool of devices and their allocation.
-type NUMACellLister struct{}
+type NUMACellLister struct {
+	cpuInfos *cpus.CPUs
+	nameToID map[string]int64
+}
+
+func NewNUMACellLister(cpuInfos *cpus.CPUs) NUMACellLister {
+	return NUMACellLister{
+		cpuInfos: cpuInfos,
+		nameToID: make(map[string]int64),
+	}
+}
 
 type message struct{}
 
 // NUMACellDevicePlugin is an implementation of DevicePlugin that is capable of exposing devices to containers.
 type NUMACellDevicePlugin struct {
-	update chan message
+	deviceID   string
+	numacellID int64
+	update     chan message
 }
 
-func (NUMACellLister) GetResourceNamespace() string {
+func (ncl NUMACellLister) GetResourceNamespace() string {
 	return resourceNamespace
 }
 
 // Discovery discovers all NUMA cells within the system.
-func (NUMACellLister) Discover(pluginListCh chan dpm.PluginNameList) {
-	pluginListCh <- dpm.PluginNameList{"numacell"}
+func (ncl NUMACellLister) Discover(pluginListCh chan dpm.PluginNameList) {
+	for _, numacell := range ncl.cpuInfos.NUMANodes {
+		deviceID := fmt.Sprintf("%s%02d", NUMACellName, numacell)
+		ncl.nameToID[deviceID] = int64(numacell)
+		pluginListCh <- dpm.PluginNameList{deviceID}
+	}
 }
 
 // NewPlugin initializes new device plugin with NUMACell specific attributes.
-func (NUMACellLister) NewPlugin(deviceID string) dpm.PluginInterface {
-	glog.V(3).Infof("Creating device plugin %s", deviceID)
+func (ncl NUMACellLister) NewPlugin(deviceID string) dpm.PluginInterface {
+	numacellID, found := ncl.nameToID[deviceID]
+	glog.V(1).Infof("Creating device plugin %s -> %d (%v)", deviceID, numacellID, found)
 	return &NUMACellDevicePlugin{
-		update: make(chan message),
+		deviceID:   deviceID,
+		numacellID: numacellID,
+		update:     make(chan message),
 	}
 }
 
-func GetNUMACellDevices(sysfs string) ([]*pluginapi.Device, error) {
-	cpuRes, err := cpus.NewCPUs(sysfs)
-	if err != nil {
-		return nil, err
-	}
-
+func GetNUMACellDevices(cpuInfos cpus.CPUs) ([]*pluginapi.Device, error) {
 	var devs []*pluginapi.Device
-	for _, numacell := range cpuRes.NUMANodes {
+	for _, numacell := range cpuInfos.NUMANodes {
 		// Initialize with one available device
 		devs = append(devs, &pluginapi.Device{
 			ID:     fmt.Sprintf("%s%02d", NUMACellName, numacell),
@@ -72,9 +85,18 @@ func GetNUMACellDevices(sysfs string) ([]*pluginapi.Device, error) {
 
 // ListAndWatch sends gRPC stream of devices.
 func (dpi *NUMACellDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	devs, err := GetNUMACellDevices("/sys") // TODO get from cmdline flags
-	if err != nil {
-		return err
+	devs := []*pluginapi.Device{
+		&pluginapi.Device{
+			ID:     dpi.deviceID,
+			Health: pluginapi.Healthy,
+			Topology: &pluginapi.TopologyInfo{
+				Nodes: []*pluginapi.NUMANode{
+					&pluginapi.NUMANode{
+						ID: int64(dpi.numacellID),
+					},
+				},
+			},
+		},
 	}
 
 	// Send initial list of devices
@@ -110,11 +132,6 @@ func (dpi *NUMACellDevicePlugin) Allocate(ctx context.Context, r *pluginapi.Allo
 		if !strings.HasPrefix(container.DevicesIDs[0], NUMACellName) {
 			return nil, fmt.Errorf("cannot allocate numacell %q", container.DevicesIDs[0])
 		}
-		cellID := container.DevicesIDs[0]
-		envCellID, err := strconv.Atoi(cellID[len(NUMACellName):])
-		if err != nil {
-			return nil, fmt.Errorf("unrecognized numacell format: %q error: %v", cellID, err)
-		}
 
 		dev := new(pluginapi.DeviceSpec)
 		dev.HostPath = "/dev/null"      // TODO
@@ -125,7 +142,7 @@ func (dpi *NUMACellDevicePlugin) Allocate(ctx context.Context, r *pluginapi.Allo
 		containerResp.Devices = []*pluginapi.DeviceSpec{dev}
 		// this is only meant to improve debuggability
 		containerResp.Envs = map[string]string{
-			"IO_OPENSHIFT_KNI_NUMA_CELL_ID": fmt.Sprintf("%d", envCellID),
+			"IO_OPENSHIFT_KNI_NUMA_CELL_ID": fmt.Sprintf("%d", dpi.numacellID),
 		}
 
 		response.ContainerResponses = append(response.ContainerResponses, containerResp)
