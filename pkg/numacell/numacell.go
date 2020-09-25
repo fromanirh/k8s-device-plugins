@@ -8,14 +8,23 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 	"golang.org/x/net/context"
+	corev1 "k8s.io/api/core/v1"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
 const (
-	NUMACellPath      = "/dev/null"
-	NUMACellName      = "numacell"
-	resourceNamespace = "openshift-kni.io" // TODO pick a better one?
+	NUMACellDevicePath        = "/dev/null"
+	NUMACellResourceName      = "numacell"
+	NUMACellResourceNamespace = "openshift-kni.io" // TODO pick a better one?
 )
+
+func MakeResourceName(numacellid int) corev1.ResourceName {
+	return corev1.ResourceName(fmt.Sprintf("%s/%s", NUMACellResourceNamespace, MakeDeviceID(numacellid))) // TODO
+}
+
+func MakeDeviceID(numacellid int) string {
+	return fmt.Sprintf("%s%02d", NUMACellResourceName, numacellid)
+}
 
 // NUMACellLister is the object responsible for discovering initial pool of devices and their allocation.
 type NUMACellLister struct {
@@ -40,13 +49,13 @@ type NUMACellDevicePlugin struct {
 }
 
 func (ncl NUMACellLister) GetResourceNamespace() string {
-	return resourceNamespace
+	return NUMACellResourceNamespace
 }
 
 // Discovery discovers all NUMA cells within the system.
 func (ncl NUMACellLister) Discover(pluginListCh chan dpm.PluginNameList) {
 	for _, numacell := range ncl.cpuInfos.NUMANodes {
-		deviceID := fmt.Sprintf("%s%02d", NUMACellName, numacell)
+		deviceID := MakeDeviceID(numacell)
 		ncl.nameToID[deviceID] = int64(numacell)
 		pluginListCh <- dpm.PluginNameList{deviceID}
 	}
@@ -111,7 +120,7 @@ func (dpi *NUMACellDevicePlugin) Allocate(ctx context.Context, r *pluginapi.Allo
 		if len(container.DevicesIDs) != 1 {
 			return nil, fmt.Errorf("can't allocate more than 1 numacell")
 		}
-		if !strings.HasPrefix(container.DevicesIDs[0], NUMACellName) {
+		if !strings.HasPrefix(container.DevicesIDs[0], NUMACellResourceName) {
 			return nil, fmt.Errorf("cannot allocate numacell %q", container.DevicesIDs[0])
 		}
 
