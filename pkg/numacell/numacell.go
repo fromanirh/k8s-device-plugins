@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fromanirh/numalign/pkg/topologyinfo/cpus"
 	"github.com/golang/glog"
+	"github.com/jaypipes/ghw/pkg/topology"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
@@ -28,13 +28,13 @@ func MakeDeviceID(numacellid int) string {
 
 // NUMACellLister is the object responsible for discovering initial pool of devices and their allocation.
 type NUMACellLister struct {
-	cpuInfos *cpus.CPUs
+	topoInfo *topology.Info
 	nameToID map[string]int64
 }
 
-func NewNUMACellLister(cpuInfos *cpus.CPUs) NUMACellLister {
+func NewNUMACellLister(topoInfo *topology.Info) NUMACellLister {
 	return NUMACellLister{
-		cpuInfos: cpuInfos,
+		topoInfo: topoInfo,
 		nameToID: make(map[string]int64),
 	}
 }
@@ -54,9 +54,9 @@ func (ncl NUMACellLister) GetResourceNamespace() string {
 
 // Discovery discovers all NUMA cells within the system.
 func (ncl NUMACellLister) Discover(pluginListCh chan dpm.PluginNameList) {
-	for _, numacell := range ncl.cpuInfos.NUMANodes {
-		deviceID := MakeDeviceID(numacell)
-		ncl.nameToID[deviceID] = int64(numacell)
+	for _, node := range ncl.topoInfo.Nodes {
+		deviceID := MakeDeviceID(node.ID)
+		ncl.nameToID[deviceID] = int64(node.ID)
 		pluginListCh <- dpm.PluginNameList{deviceID}
 	}
 }

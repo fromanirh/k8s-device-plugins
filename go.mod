@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/fromanirh/numalign v0.0.7
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/jaypipes/ghw v0.8.1-0.20210705185843-22c410e6a188
 	github.com/kubevirt/device-plugin-manager v1.18.8
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1

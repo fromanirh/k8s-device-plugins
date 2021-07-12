@@ -2,21 +2,26 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"strings"
-	"text/tabwriter"
+
+	"github.com/jaypipes/ghw/pkg/option"
+	"github.com/jaypipes/ghw/pkg/topology"
 
 	"github.com/fromanirh/k8s-device-plugins/pkg/numacell"
-	"github.com/fromanirh/numalign/pkg/topologyinfo/cpus"
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 )
 
-func summarize(cpuInfos *cpus.CPUs) string {
+func summarize(topoInfo *topology.Info) string {
 	var buf strings.Builder
-	w := tabwriter.NewWriter(&buf, 0, 0, 1, ' ', 0)
-	cpus.MakeSummary(cpuInfos, w)
-	w.Flush()
+	for _, node := range topoInfo.Nodes {
+		fmt.Fprintf(&buf, "NUMA node %d\n", node.ID)
+		for _, core := range node.Cores {
+			fmt.Fprintf(&buf, "\t%s\n", core.String())
+		}
+	}
 	return buf.String()
 }
 
@@ -25,13 +30,16 @@ func main() {
 	flag.StringVar(&sysfsPath, "sysfs", "/sys", "mount path of sysfs")
 	flag.Parse()
 
-	cpuInfos, err := cpus.NewCPUs(sysfsPath)
+	glog.Infof("using sysfs at %q", sysfsPath)
+	topoInfo, err := topology.New(option.WithPathOverrides(option.PathOverrides{
+		"/sys": sysfsPath,
+	}))
 	if err != nil {
 		log.Fatalf("error getting topology info from %q: %v", sysfsPath, err)
 	}
 
-	glog.Infof("detected:\n%s", summarize(cpuInfos))
+	glog.Infof("hardware detected:\n%s", summarize(topoInfo))
 
-	manager := dpm.NewManager(numacell.NewNUMACellLister(cpuInfos))
+	manager := dpm.NewManager(numacell.NewNUMACellLister(topoInfo))
 	manager.Run()
 }
