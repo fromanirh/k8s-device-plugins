@@ -1,3 +1,5 @@
+# github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d
+github.com/StackExchange/wmi
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/evanphx/json-patch v4.5.0+incompatible
@@ -9,8 +11,13 @@ github.com/fromanirh/cpuset
 github.com/fromanirh/numalign/pkg/topologyinfo/cpus
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
+# github.com/ghodss/yaml v1.0.0
+github.com/ghodss/yaml
 # github.com/go-logr/logr v0.1.0
 github.com/go-logr/logr
+# github.com/go-ole/go-ole v1.2.4
+github.com/go-ole/go-ole
+github.com/go-ole/go-ole/oleutil
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
@@ -33,6 +40,19 @@ github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 # github.com/imdario/mergo v0.3.6
 github.com/imdario/mergo
+# github.com/jaypipes/ghw v0.8.1-0.20210705185843-22c410e6a188
+## explicit
+github.com/jaypipes/ghw/pkg/context
+github.com/jaypipes/ghw/pkg/cpu
+github.com/jaypipes/ghw/pkg/linuxpath
+github.com/jaypipes/ghw/pkg/marshal
+github.com/jaypipes/ghw/pkg/memory
+github.com/jaypipes/ghw/pkg/option
+github.com/jaypipes/ghw/pkg/pci/address
+github.com/jaypipes/ghw/pkg/snapshot
+github.com/jaypipes/ghw/pkg/topology
+github.com/jaypipes/ghw/pkg/unitutil
+github.com/jaypipes/ghw/pkg/util
 # github.com/json-iterator/go v1.1.8
 github.com/json-iterator/go
 # github.com/kubevirt/device-plugin-manager v1.18.8
